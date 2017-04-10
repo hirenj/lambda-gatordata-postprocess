@@ -1,0 +1,167 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Resources": {
+    "StatePostProcessRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": {"Fn::Join": ["", [ "states.", { "Ref" : "AWS::Region" } , ".amazonaws.com" ]] }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies" : [{
+            "PolicyName" : "AllowLambda",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                  {
+                    "Sid": "RegisterEvents",
+                    "Effect": "Allow",
+                    "Action": [ "lambda:InvokeFunction" ],
+                    "Resource" : [
+                      { "Fn::GetAtt": ["serialiseDataset", "Arn"] },
+                      { "Fn::GetAtt": ["updateMetadata", "Arn"] }
+                    ]
+                  }
+              ]
+            }
+        }]
+      }
+    },
+    "StatePostProcess": {
+      "Type": "AWS::StepFunctions::StateMachine",
+      "Properties": {
+        "DefinitionString": {
+           "Fn::Join": [
+              "\n",
+              [
+                 "{",
+                 "    \"StartAt\": \"updateMetadata\",",
+                 "    \"States\" : {",
+                 "        \"updateMetadata\" : {",
+                 "            \"Type\" : \"Task\", ",
+                 { "Fn::Join": ["",["            \"Resource\" : \"",{ "Fn::GetAtt": ["updateMetadata", "Arn"] },"\","]] },
+                 "            \"Next\" : \"serialiseDataset\"",
+                 "        },",
+                 "        \"serialiseDataset\" : {",
+                 "            \"Type\" : \"Task\", ",
+                 { "Fn::Join": ["",["            \"Resource\" : \"",{ "Fn::GetAtt": ["serialiseDataset", "Arn"] },"\","]] },
+                 "            \"End\" : true",
+                 "        }",
+                 "    }",
+                 "}"
+              ]
+           ]
+        },
+        "RoleArn" : { "Fn::GetAtt": ["StatePostProcessRole", "Arn"] }
+      }
+    },
+    "runPostProcess" : {
+      "Type" : "AWS::Lambda::Function",
+      "Properties" : {
+        "Code" : {
+          "ZipFile": { "Fn::Join": ["", [
+            "exports.runPostProcess = function(event, context) {",
+            "  context.succeed('OK');",
+            "};"
+          ]]}
+        },
+        "Description" : "runSplitQueue",
+        "Handler" : "index.runSplitQueue",
+        "Environment" : { "Variables" : {}},
+        "Role" : {"Fn::GetAtt" : ["LambdaRunStatePostProcessRole", "Arn"] },
+        "Runtime" : "nodejs4.3",
+        "MemorySize" : 128,
+        "Timeout" : 60
+      },
+      "DependsOn" : "LambdaRunStatePostProcessRole"
+    },
+    "StartExecutionStatePostProcess" : {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties" : {
+        "Description" : "StartExecutionStatePostProcess",
+        "PolicyDocument" : {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "states:StartExecution"
+                  ],
+                  "Resource": [
+                    {"Ref" : "StatePostProcess" }
+                  ]
+                }
+            ]
+          }
+        }
+    },
+    "LambdaRunStatePostProcessRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "ManagedPolicyArns" : [ {"Ref" : "StartExecutionStatePostProcess"}],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        }
+      }
+    },
+    "SplitQueueTopic" : {
+      "Type" : "AWS::SNS::Topic",
+      "Properties" : {
+        "DisplayName" : "Events on the Split Queue",
+        "Subscription" : [{
+          "Endpoint" : { "Fn::GetAtt": [ "serialiseDataset", "Arn" ]},
+          "Protocol" : "lambda"
+        }]
+      }
+    },
+    "RunPostProcessSplitQueueTopicPermission": {
+        "Type" : "AWS::Lambda::Permission",
+        "Properties" : {
+            "Action":"lambda:InvokeFunction",
+            "FunctionName": { "Fn::GetAtt": [ "runPostProcess", "Arn" ]},
+            "Principal": "sns.amazonaws.com",
+            "SourceArn": { "Ref" : "SplitQueueTopic" }
+        }
+    },
+    "PostProcessLogWriterPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "PostProcessLogWriterPolicy",
+        "PolicyDocument" : {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "logs:CreateLogGroup",
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents"
+                ],
+                "Resource": "arn:aws:logs:*:*:*"
+              }
+            ]
+        },
+        "Roles" : [ { "Ref" : "LambdaRunStatePostProcessRole" } ]
+      }
+    }
+  },
+  "Outputs": {
+  }
+}
