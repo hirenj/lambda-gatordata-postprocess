@@ -1,7 +1,7 @@
 'use strict';
 /*jshint esversion: 6, node:true */
 
-let data_table = 'test-data';
+let bucket_name = 'data';
 
 let config = {};
 
@@ -10,6 +10,7 @@ let post_process_machine = 'StatePostProcess';
 
 try {
     config = require('./resources.conf.json');
+    bucket_name = config.buckets.dataBucket;
     post_process_machine = config.stepfunctions.StatePostProcess;
 } catch (e) {
 }
@@ -42,9 +43,9 @@ const extract_changed_keys = function(event) {
 
 const triggerPostProcess = function(set_path) {
   let params = {
-    stateMachineArn: split_queue_machine,
+    stateMachineArn: post_process_machine,
     input: JSON.stringify({ Key: set_path }),
-    name: ('PostProcess '+set+(new Date()).toString()).replace(/[^A-Za-z0-9]/g,'_')
+    name: ('PostProcess '+set_path+(new Date()).toString()).replace(/[^A-Za-z0-9]/g,'_')
   };
   return stepfunctions.startExecution(params).promise();
 };
