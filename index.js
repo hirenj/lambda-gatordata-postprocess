@@ -45,7 +45,7 @@ const triggerPostProcess = function(set_path) {
   let params = {
     stateMachineArn: post_process_machine,
     input: JSON.stringify(set_path),
-    name: ('PostProcess '+set_path.Key+(new Date()).toString()).replace(/[^A-Za-z0-9]/g,'_').substring(0,55)
+    name: ((set_path.Key.split('/')[1])+(new Date()).toString()).replace(/[^A-Za-z0-9]/g,'').substring(0,59)
   };
   return stepfunctions.startExecution(params).promise();
 };
