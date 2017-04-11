@@ -73,8 +73,8 @@
             "};"
           ]]}
         },
-        "Description" : "runSplitQueue",
-        "Handler" : "index.runSplitQueue",
+        "Description" : "runPostProcess",
+        "Handler" : "index.runPostProcess",
         "Environment" : { "Variables" : {}},
         "Role" : {"Fn::GetAtt" : ["LambdaRunStatePostProcessRole", "Arn"] },
         "Runtime" : "nodejs4.3",
