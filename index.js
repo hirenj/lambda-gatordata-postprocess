@@ -38,13 +38,13 @@ const extract_changed_keys = function(event) {
     return { bucket: sns_message.Bucket, key: sns_message.Key };
   });
   results = [].concat.apply([],results);
-  return results.filter( obj => obj.bucket == bucket_name ).map( obj => obj.key );
+  return results.filter( obj => obj.bucket == bucket_name ).map( obj => { return { Key: obj.key }; } );
 };
 
 const triggerPostProcess = function(set_path) {
   let params = {
     stateMachineArn: post_process_machine,
-    input: JSON.stringify({ Key: set_path }),
+    input: JSON.stringify(set_path),
     name: ('PostProcess '+set_path+(new Date()).toString()).replace(/[^A-Za-z0-9]/g,'_')
   };
   return stepfunctions.startExecution(params).promise();
