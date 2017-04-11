@@ -126,7 +126,7 @@
       "Properties" : {
         "DisplayName" : "Events on the Split Queue",
         "Subscription" : [{
-          "Endpoint" : { "Fn::GetAtt": [ "serialiseDataset", "Arn" ]},
+          "Endpoint" : { "Fn::GetAtt": [ "runPostProcess", "Arn" ]},
           "Protocol" : "lambda"
         }]
       }
