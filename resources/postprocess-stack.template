@@ -120,7 +120,7 @@
         "Handler" : "index.runPostProcess",
         "Environment" : { "Variables" : {}},
         "Role" : {"Fn::GetAtt" : ["LambdaRunStatePostProcessRole", "Arn"] },
-        "Runtime" : "nodejs4.3",
+        "Runtime" : "nodejs6.10",
         "MemorySize" : 128,
         "Timeout" : 60
       },
