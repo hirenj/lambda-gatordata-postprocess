@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  StatePostProcessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub 'states.${AWS::Region}.amazonaws.com'
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: RegisterEvents
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt 'serialiseDataset.Arn'
+                  - !GetAtt 'updateMetadata.Arn'
+  StatePostProcess:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      DefinitionString: !Sub
+        - "{\n    \"StartAt\": \"updateMetadata\",\n    \"States\" : {\n        \"\
+          updateMetadata\" : {\n            \"Type\" : \"Task\", \n${Param1}\n   \
+          \         \"Next\" : \"setSerialiserRData\"\n        },\n        \"setSerialiserRData\"\
+          : {\n          \"Type\": \"Pass\",\n          \"Result\": \"RData\",\n \
+          \         \"ResultPath\": \"$.serialiser\",\n          \"Next\": \"serialiseDatasetRData\"\
+          \n        },\n        \"serialiseDatasetRData\" : {\n            \"Type\"\
+          \ : \"Task\", \n${Param2}\n            \"ResultPath\": \"$.lastoutput\"\
+          ,\n            \"Next\" : \"setSerialiserRDataPartial\"\n        },\n  \
+          \      \"setSerialiserRDataPartial\": {\n          \"Type\": \"Pass\",\n\
+          \          \"Result\": \"RData_partial\",\n          \"ResultPath\": \"\
+          $.serialiser\",\n          \"Next\": \"serialiseDatasetRDataPartial\"\n\
+          \        },\n        \"serialiseDatasetRDataPartial\" : {\n            \"\
+          Type\" : \"Task\", \n${Param2}\n            \"ResultPath\": \"$.lastoutput\"\
+          ,\n            \"Next\" : \"setSerialiserTDE\"\n        },\n        \"setSerialiserTDE\"\
+          : {\n          \"Type\": \"Pass\",\n          \"Result\": \"TDE\",\n   \
+          \       \"ResultPath\": \"$.serialiser\",\n          \"Next\": \"serialiseDatasetTDE\"\
+          \n        },\n        \"serialiseDatasetTDE\" : {\n            \"Type\"\
+          \ : \"Task\", \n${Param2}\n            \"ResultPath\": \"$.lastoutput\"\
+          ,\n            \"Next\" : \"setSerialiserTDEPartial\"\n        },\n    \
+          \    \"setSerialiserTDEPartial\": {\n          \"Type\": \"Pass\",\n   \
+          \       \"Result\": \"TDE_partial\",\n          \"ResultPath\": \"$.serialiser\"\
+          ,\n          \"Next\": \"serialiseDatasetTDEPartial\"\n        },\n    \
+          \    \"serialiseDatasetTDEPartial\" : {\n            \"Type\" : \"Task\"\
+          , \n${Param2}\n            \"ResultPath\": \"$.lastoutput\",\n         \
+          \   \"End\" : true\n        }\n    }\n}"
+        - Param1: !Sub '            "Resource" : "${updateMetadata.Arn}",'
+          Param2: !Sub '            "Resource" : "${serialiseDataset.Arn}",'
+      RoleArn: !GetAtt 'StatePostProcessRole.Arn'
+  runPostProcess:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: exports.runPostProcess = function(event, context) {  context.succeed('OK');};
+      Description: runPostProcess
+      Handler: index.runPostProcess
+      Environment:
+        Variables: {}
+      Role: !GetAtt 'LambdaRunStatePostProcessRole.Arn'
+      Runtime: nodejs8.10
+      MemorySize: 128
+      Timeout: 60
+    DependsOn: LambdaRunStatePostProcessRole
+  StartExecutionStatePostProcess:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: StartExecutionStatePostProcess
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !Ref 'StatePostProcess'
+  LambdaRunStatePostProcessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - !Ref 'StartExecutionStatePostProcess'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+  SplitQueueTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Events on the Split Queue
+      Subscription:
+        - Endpoint: !GetAtt 'runPostProcess.Arn'
+          Protocol: lambda
+  RunPostProcessSplitQueueTopicPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt 'runPostProcess.Arn'
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref 'SplitQueueTopic'
+  PostProcessLogWriterPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: PostProcessLogWriterPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+      Roles:
+        - !Ref 'LambdaRunStatePostProcessRole'
+Outputs: {}
