@@ -85,6 +85,7 @@ Resources:
     Properties:
       ManagedPolicyArns:
         - !Ref 'StartExecutionStatePostProcess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -106,19 +107,4 @@ Resources:
       FunctionName: !GetAtt 'runPostProcess.Arn'
       Principal: sns.amazonaws.com
       SourceArn: !Ref 'SplitQueueTopic'
-  PostProcessLogWriterPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: PostProcessLogWriterPolicy
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Resource: arn:aws:logs:*:*:*
-      Roles:
-        - !Ref 'LambdaRunStatePostProcessRole'
 Outputs: {}
