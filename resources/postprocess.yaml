@@ -39,18 +39,7 @@ Resources:
           $.serialiser\",\n          \"Next\": \"serialiseDatasetRDataPartial\"\n\
           \        },\n        \"serialiseDatasetRDataPartial\" : {\n            \"\
           Type\" : \"Task\", \n${Param2}\n            \"ResultPath\": \"$.lastoutput\"\
-          ,\n            \"Next\" : \"setSerialiserTDE\"\n        },\n        \"setSerialiserTDE\"\
-          : {\n          \"Type\": \"Pass\",\n          \"Result\": \"TDE\",\n   \
-          \       \"ResultPath\": \"$.serialiser\",\n          \"Next\": \"serialiseDatasetTDE\"\
-          \n        },\n        \"serialiseDatasetTDE\" : {\n            \"Type\"\
-          \ : \"Task\", \n${Param2}\n            \"ResultPath\": \"$.lastoutput\"\
-          ,\n            \"Next\" : \"setSerialiserTDEPartial\"\n        },\n    \
-          \    \"setSerialiserTDEPartial\": {\n          \"Type\": \"Pass\",\n   \
-          \       \"Result\": \"TDE_partial\",\n          \"ResultPath\": \"$.serialiser\"\
-          ,\n          \"Next\": \"serialiseDatasetTDEPartial\"\n        },\n    \
-          \    \"serialiseDatasetTDEPartial\" : {\n            \"Type\" : \"Task\"\
-          , \n${Param2}\n            \"ResultPath\": \"$.lastoutput\",\n         \
-          \   \"End\" : true\n        }\n    }\n}"
+          ,\n            \"End\" : true\n        }\n    }\n}"
         - Param1: !Sub '            "Resource" : "${updateMetadata.Arn}",'
           Param2: !Sub '            "Resource" : "${serialiseDataset.Arn}",'
       RoleArn: !GetAtt 'StatePostProcessRole.Arn'
