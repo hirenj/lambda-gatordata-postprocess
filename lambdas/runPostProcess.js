@@ -9,7 +9,7 @@ let post_process_machine = 'StatePostProcess';
 
 
 try {
-    config = require('./resources.conf.json');
+    config = require('../resources.conf.json');
     bucket_name = config.buckets.dataBucket;
     post_process_machine = config.stepfunctions.StatePostProcess;
 } catch (e) {
