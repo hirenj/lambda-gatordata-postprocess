@@ -53,7 +53,7 @@ Resources:
       Environment:
         Variables: {}
       Role: !GetAtt 'LambdaRunStatePostProcessRole.Arn'
-      Runtime: nodejs8.10
+      Runtime: !Ref nodejsversion
       MemorySize: 128
       Timeout: 60
     DependsOn: LambdaRunStatePostProcessRole

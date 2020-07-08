@@ -1,0 +1,1 @@
+exports.runPostProcess = require('./lambdas/runPostProcess').runPostProcess;
